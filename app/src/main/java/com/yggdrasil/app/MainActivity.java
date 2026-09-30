@@ -1,1 +1,45 @@
-cGFja2FnZSBjb20ueWdnZHJhc2lsLmFwcDsKCmltcG9ydCBhbmRyb2lkLmFwcC5BY3Rpdml0eTsKaW1wb3J0IGFuZHJvaWQub3MuQnVuZGxlOwppbXBvcnQgYW5kcm9pZC53ZWJraXQuV2ViU2V0dGluZ3M7CmltcG9ydCBhbmRyb2lkLndlYmtpdC5XZWJWaWV3OwppbXBvcnQgYW5kcm9pZC53ZWJraXQuV2ViVmlld0NsaWVudDsKaW1wb3J0IGFuZHJvaWQud2Via2l0LldlYkNocm9tZUNsaWVudDsKaW1wb3J0IGFuZHJvaWQud2Via2l0LlBlcm1pc3Npb25SZXF1ZXN0OwoKcHVibGljIGNsYXNzIE1haW5BY3Rpdml0eSBleHRlbmRzIEFjdGl2aXR5IHsKICAgIHByaXZhdGUgV2ViVmlldyB3ZWI7CiAgICBAT3ZlcnJpZGUgcHVibGljIHZvaWQgb25DcmVhdGUoQnVuZGxlIHN0YXRlKXsKICAgICAgICBzdXBlci5vbkNyZWF0ZShzdGF0ZSk7CiAgICAgICAgd2ViPW5ldyBXZWJWaWV3KHRoaXMpOwogICAgICAgIFdlYlNldHRpbmdzIHM9d2ViLmdldFNldHRpbmdzKCk7CiAgICAgICAgcy5zZXRKYXZhU2NyaXB0RW5hYmxlZCh0cnVlKTsKICAgICAgICBzLnNldERvbVN0b3JhZ2VFbmFibGVkKHRydWUpOwogICAgICAgIHMuc2V0RGF0YWJhc2VFbmFibGVkKHRydWUpOwogICAgICAgIHMuc2V0QWxsb3dGaWxlQWNjZXNzKHRydWUpOwogICAgICAgIHMuc2V0TWVkaWFQbGF5YmFja1JlcXVpcmVzVXNlckdlc3R1cmUoZmFsc2UpOwogICAgICAgIHdlYi5zZXRXZWJWaWV3Q2xpZW50KG5ldyBXZWJWaWV3Q2xpZW50KCkpOwogICAgICAgIHdlYi5zZXRXZWJDaHJvbWVDbGllbnQobmV3IFdlYkNocm9tZUNsaWVudCgpewogICAgICAgICAgICBAT3ZlcnJpZGUgcHVibGljIHZvaWQgb25QZXJtaXNzaW9uUmVxdWVzdChmaW5hbCBQZXJtaXNzaW9uUmVxdWVzdCByKXsgcnVuT25VaVRocmVhZCgoKSAtPiByLmdyYW50KHIuZ2V0UmVzb3VyY2VzKCkpKTsgfQogICAgICAgIH0pOwogICAgICAgIHNldENvbnRlbnRWaWV3KHdlYik7CiAgICAgICAgd2ViLmxvYWRVcmwoImZpbGU6Ly8vYW5kcm9pZF9hc3NldC9pbmRleC5odG1sIik7CiAgICB9CiAgICBAT3ZlcnJpZGUgcHVibGljIHZvaWQgb25CYWNrUHJlc3NlZCgpeyBpZih3ZWIuY2FuR29CYWNrKCkpIHdlYi5nb0JhY2soKTsgZWxzZSBzdXBlci5vbkJhY2tQcmVzc2VkKCk7IH0KfQo=
+package com.yggdrasil.app;
+
+import android.app.Activity;
+import android.os.Bundle;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import android.webkit.WebChromeClient;
+import android.webkit.PermissionRequest;
+
+public class MainActivity extends Activity {
+    private WebView web;
+
+    @Override
+    public void onCreate(Bundle state) {
+        super.onCreate(state);
+
+        web = new WebView(this);
+        WebSettings s = web.getSettings();
+        s.setJavaScriptEnabled(true);
+        s.setDomStorageEnabled(true);
+        s.setDatabaseEnabled(true);
+        s.setAllowFileAccess(true);
+        s.setMediaPlaybackRequiresUserGesture(false);
+
+        web.setWebViewClient(new WebViewClient());
+        web.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public void onPermissionRequest(final PermissionRequest r) {
+                runOnUiThread(() -> r.grant(r.getResources()));
+            }
+        });
+
+        setContentView(web);
+        web.loadUrl("file:///android_asset/index.html");
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (web.canGoBack())
+            web.goBack();
+        else
+            super.onBackPressed();
+    }
+          }
