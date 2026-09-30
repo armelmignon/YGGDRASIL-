@@ -1,1 +1,15 @@
-cGx1Z2lucyB7IGlkICdjb20uYW5kcm9pZC5hcHBsaWNhdGlvbicgfQoKYW5kcm9pZCB7IG5hbWVzcGFjZSAnY29tLnlnZ2RyYXNpbC5hcHAnOyBjb21waWxlU2RrIDM1CiAgICBkZWZhdWx0Q29uZmlnIHsgYXBwbGljYXRpb25JZCAnY29tLnlnZ2RyYXNpbC5hcHAnOyBtaW5TZGsgMjM7IHRhcmdldFNkayAzNTsgdmVyc2lvbkNvZGUgMzsgdmVyc2lvbk5hbWUgJzAuMycgfQp9Cg==
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.yggdrasil.app'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'com.yggdrasil.app'
+        minSdk 23
+        targetSdk 35
+        versionCode 3
+        versionName '0.3'
+    }
+}
