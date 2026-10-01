@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>YGGDRASIL v0.3</title>
+<title>YGGDRASIL v0.4</title>
 <style>
 :root{
   --bg:#050505;--panel:#101010;--text:#f5f5f5;--muted:#909090;
@@ -45,6 +45,27 @@ h2{font-size:13px;color:var(--muted);margin:0 0 12px}
 .small{color:var(--muted);font-size:12px}
 .action{display:inline-block;float:none;margin:10px 8px 0 0;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--accent);color:var(--bg)}
 .voice-status{margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:12px;color:var(--muted)}
+.voice-box{margin-top:12px;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--panel)}
+.voice-text{font-size:14px;min-height:24px}
+.mic{
+  display:block;
+  width:72px;
+  height:72px;
+  margin:14px auto 8px;
+  border-radius:50%;
+  border:1px solid var(--line);
+  background:var(--accent);
+  color:var(--bg);
+  font-size:30px;
+}
+.mic.listening{
+  animation:pulse 1s infinite;
+}
+@keyframes pulse{
+  0%{transform:scale(1)}
+  50%{transform:scale(1.08)}
+  100%{transform:scale(1)}
+}
 .empty{grid-column:1/-1;color:var(--muted);font-size:13px;padding:20px 5px}
 </style>
 </head>
@@ -96,6 +117,9 @@ let modules=JSON.parse(localStorage.getItem('ygg_modules')||'null')||defaults;
 let voiceMode=localStorage.getItem('ygg_voice_mode')||'vocal + tactile';
 let theme=localStorage.getItem('ygg_theme')||'dark';
 
+let recognition=null;
+let isListening=false;
+
 const $=id=>document.getElementById(id);
 
 function applyTheme(){
@@ -108,27 +132,50 @@ function render(filter=''){
   const list=modules.filter(m=>
     !v || m[1].toLowerCase().includes(v) || m[2].toLowerCase().includes(v)
   );
+
   if(!list.length){
     $('grid').innerHTML='<div class="empty">Aucun module trouvé.</div>';
     return;
   }
+
   list.forEach(m=>{
     const i=modules.indexOf(m);
     const b=document.createElement('button');
     b.className='card';
-    b.innerHTML=`<div class="icon">${m[0]}</div><div class="title">${escapeHtml(m[1])}</div><div class="desc">${escapeHtml(m[2])}</div>`;
+    b.innerHTML=
+      `<div class="icon">${m[0]}</div>
+       <div class="title">${escapeHtml(m[1])}</div>
+       <div class="desc">${escapeHtml(m[2])}</div>`;
     b.onclick=()=>openModule(i);
     $('grid').appendChild(b);
   });
 }
 
 function escapeHtml(s){
-  return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+  return String(s).replace(/[&<>"']/g,c=>({
+    '&':'&amp;',
+    '<':'&lt;',
+    '>':'&gt;',
+    '"':'&quot;',
+    "'":'&#039;'
+  }[c]));
 }
 
 function openModule(i){
-  openPanel(modules[i][0],modules[i][1],modules[i][2],
-    `<div class="row"><b>${escapeHtml(modules[i][1])}</b><br><span class="small">${escapeHtml(modules[i][2])}</span></div>`);
+  if(modules[i][1]==='Assistant'){
+    openAssistant();
+    return;
+  }
+
+  openPanel(
+    modules[i][0],
+    modules[i][1],
+    modules[i][2],
+    `<div class="row">
+      <b>${escapeHtml(modules[i][1])}</b><br>
+      <span class="small">${escapeHtml(modules[i][2])}</span>
+    </div>`
+  );
 }
 
 function openPanel(icon,title,desc,html){
@@ -138,9 +185,21 @@ function openPanel(icon,title,desc,html){
   $('panel').classList.add('show');
 }
 
-function closePanel(){$('panel').classList.remove('show')}
-function goHome(){closePanel();window.scrollTo(0,0)}
-function focusSearch(){closePanel();$('q').focus();window.scrollTo(0,0)}
+function closePanel(){
+  stopListening();
+  $('panel').classList.remove('show');
+}
+
+function goHome(){
+  closePanel();
+  window.scrollTo(0,0);
+}
+
+function focusSearch(){
+  closePanel();
+  $('q').focus();
+  window.scrollTo(0,0);
+}
 
 function search(e){
   e.preventDefault();
@@ -180,9 +239,37 @@ function settings(){
   </div>
 
   <div class="row">📦 <b>YGGDRASIL</b><br>
-    <span class="small">Version 0.3 · architecture modulaire.</span>
+    <span class="small">Version 0.4 · système vocal intégré.</span>
   </div>`;
+
   openPanel('⚙️','PARAMÈTRES','Configuration générale de YGGDRASIL',html);
+}
+
+function openAssistant(){
+  const html=`
+  <div class="voice-box">
+    <div class="small">ASSISTANT YGGDRASIL</div>
+
+    <button id="micButton" class="mic" onclick="toggleListening()">🎙️</button>
+
+    <div id="voiceText" class="voice-text">
+      Appuie sur le microphone et parle.
+    </div>
+
+    <div id="voiceStatus" class="voice-status">
+      Système vocal : prêt
+    </div>
+
+    <button class="action" onclick="testVoice()">🔊 Tester la voix</button>
+    <button class="action" onclick="clearVoiceText()">Effacer</button>
+  </div>`;
+
+  openPanel(
+    '🎙️',
+    'ASSISTANT',
+    'Assistant vocal + tactile',
+    html
+  );
 }
 
 function setVoiceMode(mode){
@@ -193,15 +280,260 @@ function setVoiceMode(mode){
 
 function testVoice(){
   const status=$('voiceStatus');
+
   if(!('speechSynthesis' in window)){
-    status.textContent='Système vocal non disponible sur cet appareil/navigateur.';
+    if(status) status.textContent='Synthèse vocale non disponible.';
     return;
   }
+
   const u=new SpeechSynthesisUtterance('YGGDRASIL est prêt.');
   u.lang='fr-FR';
+
   speechSynthesis.cancel();
   speechSynthesis.speak(u);
-  status.textContent='Lecture vocale en cours…';
+
+  if(status) status.textContent='Lecture vocale en cours…';
+}
+
+function speak(text){
+  if(!('speechSynthesis' in window)) return;
+
+  speechSynthesis.cancel();
+
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang='fr-FR';
+  u.rate=1;
+  u.pitch=1;
+
+  speechSynthesis.speak(u);
+}
+
+function createRecognition(){
+
+  const SpeechRecognition=
+    window.SpeechRecognition ||
+    window.webkitSpeechRecognition;
+
+  if(!SpeechRecognition){
+    return null;
+  }
+
+  const r=new SpeechRecognition();
+
+  r.lang='fr-FR';
+  r.continuous=false;
+  r.interimResults=true;
+  r.maxAlternatives=1;
+
+  r.onstart=()=>{
+    isListening=true;
+
+    const button=$('micButton');
+    const status=$('voiceStatus');
+    const text=$('voiceText');
+
+    if(button){
+      button.classList.add('listening');
+      button.textContent='⏹️';
+    }
+
+    if(status){
+      status.textContent='🎙️ YGGDRASIL vous écoute…';
+    }
+
+    if(text){
+      text.textContent='Parlez maintenant…';
+    }
+  };
+
+  r.onresult=(event)=>{
+
+    let transcript='';
+
+    for(let i=event.resultIndex;i<event.results.length;i++){
+      transcript+=event.results[i][0].transcript;
+    }
+
+    transcript=transcript.trim();
+
+    const text=$('voiceText');
+
+    if(text && transcript){
+      text.textContent=transcript;
+    }
+
+    if(event.results[event.results.length-1].isFinal){
+
+      const status=$('voiceStatus');
+
+      if(status){
+        status.textContent='Commande reçue.';
+      }
+
+      handleVoiceCommand(transcript);
+    }
+  };
+
+  r.onerror=(event)=>{
+    isListening=false;
+
+    const button=$('micButton');
+    const status=$('voiceStatus');
+
+    if(button){
+      button.classList.remove('listening');
+      button.textContent='🎙️';
+    }
+
+    if(status){
+      if(event.error==='not-allowed'){
+        status.textContent='Microphone refusé. Autorisez le microphone pour YGGDRASIL.';
+      }else if(event.error==='no-speech'){
+        status.textContent='Aucune parole détectée.';
+      }else{
+        status.textContent='Erreur du système vocal : '+event.error;
+      }
+    }
+  };
+
+  r.onend=()=>{
+    isListening=false;
+
+    const button=$('micButton');
+
+    if(button){
+      button.classList.remove('listening');
+      button.textContent='🎙️';
+    }
+  };
+
+  return r;
+}
+
+function toggleListening(){
+
+  if(isListening){
+    stopListening();
+    return;
+  }
+
+  if(!recognition){
+    recognition=createRecognition();
+  }
+
+  if(!recognition){
+
+    const status=$('voiceStatus');
+
+    if(status){
+      status.textContent=
+        'La reconnaissance vocale n’est pas disponible sur cet appareil.';
+    }
+
+    return;
+  }
+
+  try{
+    recognition.start();
+  }catch(e){
+    const status=$('voiceStatus');
+
+    if(status){
+      status.textContent='Le système vocal est déjà actif.';
+    }
+  }
+}
+
+function stopListening(){
+
+  if(recognition){
+    try{
+      recognition.stop();
+    }catch(e){}
+  }
+
+  isListening=false;
+
+  const button=$('micButton');
+
+  if(button){
+    button.classList.remove('listening');
+    button.textContent='🎙️';
+  }
+}
+
+function clearVoiceText(){
+
+  const text=$('voiceText');
+  const status=$('voiceStatus');
+
+  if(text){
+    text.textContent='Appuie sur le microphone et parle.';
+  }
+
+  if(status){
+    status.textContent='Système vocal : prêt';
+  }
+}
+
+function handleVoiceCommand(command){
+
+  if(!command) return;
+
+  const normalized=command.toLowerCase().trim();
+
+  /*
+    Première couche de commandes vocales.
+    L'intelligence de YGGDRASIL sera développée progressivement.
+  */
+
+  if(normalized.includes('bonjour')){
+
+    const response='Bonjour. YGGDRASIL est à votre écoute.';
+
+    const text=$('voiceText');
+    const status=$('voiceStatus');
+
+    if(text) text.textContent=response;
+    if(status) status.textContent='Réponse vocale prête.';
+
+    speak(response);
+    return;
+  }
+
+  if(normalized.includes('ouvre les réglages') ||
+     normalized.includes('ouvre les paramètres')){
+
+    settings();
+    speak('Ouverture des paramètres.');
+    return;
+  }
+
+  if(normalized.includes('retour') ||
+     normalized.includes('accueil')){
+
+    goHome();
+    speak('Retour à l’accueil.');
+    return;
+  }
+
+  /*
+    Pour toute commande inconnue, YGGDRASIL
+    conserve simplement le texte reçu.
+  */
+
+  const status=$('voiceStatus');
+
+  if(status){
+    status.textContent='Commande enregistrée : '+command;
+  }
+
+  /*
+    Réponse provisoire.
+    Le moteur de commandes sera enrichi dans les prochaines versions.
+  */
+
+  speak('Commande reçue.');
 }
 
 function setTheme(t){
@@ -212,10 +544,18 @@ function setTheme(t){
 }
 
 function addModule(){
+
   const name=prompt('Nom du nouveau module :');
+
   if(!name)return;
+
   modules.push(['◈',name,'Module personnel']);
-  localStorage.setItem('ygg_modules',JSON.stringify(modules));
+
+  localStorage.setItem(
+    'ygg_modules',
+    JSON.stringify(modules)
+  );
+
   render($('q').value);
   settings();
 }
@@ -230,4 +570,4 @@ setTimeout(()=>{
 },1800);
 </script>
 </body>
-  </html>
+</html>
