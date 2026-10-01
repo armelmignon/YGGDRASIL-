@@ -318,6 +318,11 @@ function speak(text){
     status.textContent='Système vocal indisponible.';
   }
   }
+  const status=document.getElementById('voiceStatus');
+  if(status){
+    status.textContent='Système vocal indisponible.';
+  }
+  }
 }
 
 function createRecognition(){
