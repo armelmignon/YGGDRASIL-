@@ -1,7 +1,15 @@
+
 package com.yggdrasil.app;
 
+import android.Manifest;
 import android.app.Activity;
+import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.os.Build;
+import android.speech.RecognitionListener;
+import android.speech.RecognizerIntent;
+import android.speech.SpeechRecognizer;
 import android.speech.tts.TextToSpeech;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
@@ -10,13 +18,20 @@ import android.webkit.WebViewClient;
 import android.webkit.WebChromeClient;
 import android.webkit.PermissionRequest;
 
+import java.util.ArrayList;
 import java.util.Locale;
 
 public class MainActivity extends Activity {
 
+    private static final int AUDIO_PERMISSION = 1001;
+
     private WebView web;
     private TextToSpeech tts;
+    private SpeechRecognizer recognizer;
+
     private boolean ttsReady = false;
+    private boolean listening = false;
+    private boolean pendingListening = false;
 
     @Override
     public void onCreate(Bundle state) {
@@ -53,8 +68,141 @@ public class MainActivity extends Activity {
             }
         });
 
+        if (SpeechRecognizer.isRecognitionAvailable(this)) {
+            recognizer = SpeechRecognizer.createSpeechRecognizer(this);
+            recognizer.setRecognitionListener(new RecognitionListener() {
+
+                @Override
+                public void onReadyForSpeech(Bundle params) {
+                    listening = true;
+                    sendStatus("🎙️ YGGDRASIL vous écoute…");
+                }
+
+                @Override
+                public void onBeginningOfSpeech() {}
+
+                @Override
+                public void onRmsChanged(float rmsdB) {}
+
+                @Override
+                public void onBufferReceived(byte[] buffer) {}
+
+                @Override
+                public void onEndOfSpeech() {
+                    listening = false;
+                }
+
+                @Override
+                public void onError(int error) {
+                    listening = false;
+
+                    String message = "Erreur de reconnaissance vocale.";
+
+                    if (error == SpeechRecognizer.ERROR_NO_MATCH ||
+                        error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT) {
+                        message = "Aucune parole détectée.";
+                    } else if (error == SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS) {
+                        message = "Autorisation du microphone nécessaire.";
+                    } else if (error == SpeechRecognizer.ERROR_NETWORK ||
+                               error == SpeechRecognizer.ERROR_NETWORK_TIMEOUT) {
+                        message = "Problème de connexion pour la reconnaissance vocale.";
+                    }
+
+                    sendStatus(message);
+                    sendToJavaScript("window.yggVoiceEnded && window.yggVoiceEnded();");
+                }
+
+                @Override
+                public void onResults(Bundle results) {
+                    listening = false;
+
+                    ArrayList<String> matches =
+                        results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+
+                    if (matches != null && !matches.isEmpty()) {
+                        String transcript = matches.get(0);
+
+                        String safeText = org.json.JSONObject.quote(transcript);
+
+                        sendToJavaScript(
+                            "window.yggVoiceResult && window.yggVoiceResult(" +
+                            safeText + ");"
+                        );
+                    }
+
+                    sendToJavaScript("window.yggVoiceEnded && window.yggVoiceEnded();");
+                }
+
+                @Override
+                public void onPartialResults(Bundle results) {}
+
+                @Override
+                public void onEvent(int eventType, Bundle params) {}
+            });
+        }
+
         setContentView(web);
         web.loadUrl("file:///android_asset/index.html");
+    }
+
+    private void sendStatus(String message) {
+        String safeMessage = org.json.JSONObject.quote(message);
+
+        sendToJavaScript(
+            "var s=document.getElementById('voiceStatus');" +
+            "if(s)s.textContent=" + safeMessage + ";"
+        );
+    }
+
+    private void sendToJavaScript(String script) {
+        runOnUiThread(() -> {
+            if (web != null) {
+                web.evaluateJavascript(script, null);
+            }
+        });
+    }
+
+    private void startRecognition() {
+        if (recognizer == null) {
+            sendStatus("Reconnaissance vocale indisponible.");
+            return;
+        }
+
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO)
+                != PackageManager.PERMISSION_GRANTED) {
+            pendingListening = true;
+
+            requestPermissions(
+                new String[]{Manifest.permission.RECORD_AUDIO},
+                AUDIO_PERMISSION
+            );
+            return;
+        }
+
+        Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        intent.putExtra(
+            RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+            RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+        );
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "fr-FR");
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "fr-FR");
+        intent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
+        intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
+
+        try {
+            recognizer.startListening(intent);
+        } catch (Exception e) {
+            listening = false;
+            sendStatus("Impossible de démarrer la reconnaissance vocale.");
+        }
+    }
+
+    private void stopRecognition() {
+        listening = false;
+
+        if (recognizer != null) {
+            recognizer.cancel();
+        }
     }
 
     public class AndroidVoice {
@@ -80,6 +228,16 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public void startListening() {
+            runOnUiThread(() -> startRecognition());
+        }
+
+        @JavascriptInterface
+        public void stopListening() {
+            runOnUiThread(() -> stopRecognition());
+        }
+
+        @JavascriptInterface
         public void stop() {
             runOnUiThread(() -> {
                 if (tts != null) {
@@ -90,7 +248,38 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    public void onRequestPermissionsResult(
+        int requestCode,
+        String[] permissions,
+        int[] grantResults
+    ) {
+        super.onRequestPermissionsResult(
+            requestCode, permissions, grantResults
+        );
+
+        if (requestCode == AUDIO_PERMISSION) {
+            if (grantResults.length > 0 &&
+                grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+
+                if (pendingListening) {
+                    pendingListening = false;
+                    startRecognition();
+                }
+
+            } else {
+                pendingListening = false;
+                sendStatus("Autorisation du microphone refusée.");
+            }
+        }
+    }
+
+    @Override
     protected void onDestroy() {
+        if (recognizer != null) {
+            recognizer.destroy();
+            recognizer = null;
+        }
+
         if (tts != null) {
             tts.stop();
             tts.shutdown();
@@ -111,4 +300,5 @@ public class MainActivity extends Activity {
             super.onBackPressed();
         }
     }
-}
+            }
+                
