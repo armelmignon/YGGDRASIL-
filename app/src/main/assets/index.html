@@ -296,16 +296,28 @@ function testVoice(){
 }
 
 function speak(text){
-  if(!('speechSynthesis' in window)) return;
+  if(window.AndroidVoice && AndroidVoice.isAvailable()){
+    AndroidVoice.speak(text);
+    return;
+  }
 
-  speechSynthesis.cancel();
+  if('speechSynthesis' in window){
+    speechSynthesis.cancel();
 
-  const u=new SpeechSynthesisUtterance(text);
-  u.lang='fr-FR';
-  u.rate=1;
-  u.pitch=1;
+    const u=new SpeechSynthesisUtterance(text);
+    u.lang='fr-FR';
+    u.rate=1;
+    u.pitch=1;
 
-  speechSynthesis.speak(u);
+    speechSynthesis.speak(u);
+    return;
+  }
+
+  const status=document.getElementById('voiceStatus');
+  if(status){
+    status.textContent='Système vocal indisponible.';
+  }
+  }
 }
 
 function createRecognition(){
