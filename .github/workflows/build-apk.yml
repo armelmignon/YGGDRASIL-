@@ -8,6 +8,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Récupérer le projet
         uses: actions/checkout@v4
@@ -23,11 +24,40 @@ jobs:
         with:
           gradle-version: '8.7'
 
-      - name: Compiler l'APK
-        run: gradle assembleDebug --no-daemon
+      - name: Préparer la clé de signature
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 --decode > yggdrasil-release.jks
+
+      - name: Compiler l'APK Release
+        run: gradle assembleRelease --no-daemon
+
+      - name: Signer l'APK
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          BUILD_TOOLS=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)
+
+          "$BUILD_TOOLS/zipalign" -f 4 \
+            app/build/outputs/apk/release/app-release-unsigned.apk \
+            app-release-aligned.apk
+
+          "$BUILD_TOOLS/apksigner" sign \
+            --ks yggdrasil-release.jks \
+            --ks-key-alias "$KEY_ALIAS" \
+            --ks-pass "pass:$KEYSTORE_PASSWORD" \
+            --out YGGDRASIL.apk \
+            app-release-aligned.apk
+
+      - name: Vérifier la signature
+        run: |
+          BUILD_TOOLS=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)
+          "$BUILD_TOOLS/apksigner" verify --verbose YGGDRASIL.apk
 
       - name: Publier l'APK
         uses: actions/upload-artifact@v4
         with:
-          name: YGGDRASIL-v0.3-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: YGGDRASIL-release-apk
+          path: YGGDRASIL.apk
