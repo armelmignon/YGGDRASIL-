@@ -251,53 +251,83 @@ function speak(text){
   }
 }
 
-let recognition=null;
-let isListening=false;
 
-function createRecognition(){
-  const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SpeechRecognition) return null;
-  const r=new SpeechRecognition();
-  r.lang='fr-FR';
-  r.continuous=false;
-  r.interimResults=true;
-  r.maxAlternatives=1;
-  r.onstart=()=>{
-    isListening=true;
-    const button=$('micButton'),status=$('voiceStatus'),text=$('voiceText');
-    if(button){button.classList.add('listening');button.textContent='⏹️';}
-    if(status) status.textContent='🎙️ YGGDRASIL vous écoute…';
-    if(text) text.textContent='Parlez maintenant…';
-  };
-  r.onresult=(event)=>{
-    let transcript='';
-    for(let i=event.resultIndex;i<event.results.length;i++) transcript+=event.results[i][0].transcript;
-    transcript=transcript.trim();
-    const text=$('voiceText');
-    if(text&&transcript) text.textContent=transcript;
-    if(event.results[event.results.length-1].isFinal){
-      const status=$('voiceStatus');
-      if(status) status.textContent='Commande reçue.';
-      handleVoiceCommand(transcript);
-    }
-  };
-  r.onerror=(event)=>{
-    isListening=false;
-    const button=$('micButton'),status=$('voiceStatus');
-    if(button){button.classList.remove('listening');button.textContent='🎙️';}
-    if(status){
-      if(event.error==='not-allowed') status.textContent='Microphone refusé. Autorisez le microphone pour YGGDRASIL.';
-      else if(event.error==='no-speech') status.textContent='Aucune parole détectée.';
-      else status.textContent='Erreur du système vocal : '+event.error;
-    }
-  };
-  r.onend=()=>{
-    isListening=false;
-    const button=$('micButton');
-    if(button){button.classList.remove('listening');button.textContent='🎙️';}
-  };
-  return r;
+let recognition = null;
+let isListening = false;
+
+function toggleListening() {
+  if (isListening) {
+    stopListening();
+    return;
+  }
+
+  if (!window.AndroidVoice) {
+    const status = $('voiceStatus');
+    if (status) status.textContent = 'Système vocal Android indisponible.';
+    return;
+  }
+
+  isListening = true;
+
+  const button = $('micButton');
+  const status = $('voiceStatus');
+  const text = $('voiceText');
+
+  if (button) {
+    button.classList.add('listening');
+    button.textContent = '⏹️';
+  }
+
+  if (status) status.textContent = '🎙️ YGGDRASIL vous écoute…';
+  if (text) text.textContent = 'Parlez maintenant…';
+
+  AndroidVoice.startListening();
 }
+
+function stopListening() {
+  if (window.AndroidVoice) {
+    AndroidVoice.stopListening();
+  }
+
+  isListening = false;
+
+  const button = $('micButton');
+
+  if (button) {
+    button.classList.remove('listening');
+    button.textContent = '🎙️';
+  }
+}
+
+window.yggVoiceResult = function(transcript) {
+  isListening = false;
+
+  const text = $('voiceText');
+  const status = $('voiceStatus');
+  const button = $('micButton');
+
+  if (text) text.textContent = transcript;
+  if (status) status.textContent = 'Commande reçue.';
+
+  if (button) {
+    button.classList.remove('listening');
+    button.textContent = '🎙️';
+  }
+
+  handleVoiceCommand(transcript);
+};
+
+window.yggVoiceEnded = function() {
+  isListening = false;
+
+  const button = $('micButton');
+
+  if (button) {
+    button.classList.remove('listening');
+    button.textContent = '🎙️';
+  }
+};
+
 
 function toggleListening(){
   if(isListening){stopListening();return;}
