@@ -30,20 +30,50 @@ jobs:
         run: |
           echo "$KEYSTORE_BASE64" | base64 --decode > yggdrasil-release.jks
 
-      - name: Compiler l'APK Release
-        run: gradle assembleRelease --no-daemon
-
-      - name: Signer l'APK
+      - name: Vérifier et récupérer l'alias
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          echo "Contenu du keystore :"
+          keytool -list \
+            -keystore yggdrasil-release.jks \
+            -storepass "$KEYSTORE_PASSWORD"
+
+          KEY_ALIAS=$(keytool -list \
+            -keystore yggdrasil-release.jks \
+            -storepass "$KEYSTORE_PASSWORD" \
+            | grep -E '^[^,]+,' \
+            | head -n 1 \
+            | cut -d',' -f1)
+
+          if [ -z "$KEY_ALIAS" ]; then
+            echo "ERREUR : impossible de trouver l'alias."
+            exit 1
+          fi
+
+          echo "Alias trouvé : $KEY_ALIAS"
+          echo "KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
+
+      - name: Compiler l'APK Release
+        run: |
+          gradle assembleRelease --no-daemon
+
+      - name: Trouver Android Build Tools
         run: |
           BUILD_TOOLS=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)
+          echo "BUILD_TOOLS=$BUILD_TOOLS" >> "$GITHUB_ENV"
+          echo "Build Tools utilisées : $BUILD_TOOLS"
 
+      - name: Aligner l'APK
+        run: |
           "$BUILD_TOOLS/zipalign" -f 4 \
             app/build/outputs/apk/release/app-release-unsigned.apk \
             app-release-aligned.apk
 
+      - name: Signer l'APK
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: |
           "$BUILD_TOOLS/apksigner" sign \
             --ks yggdrasil-release.jks \
             --ks-key-alias "$KEY_ALIAS" \
@@ -53,7 +83,6 @@ jobs:
 
       - name: Vérifier la signature
         run: |
-          BUILD_TOOLS=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)
           "$BUILD_TOOLS/apksigner" verify --verbose YGGDRASIL.apk
 
       - name: Publier l'APK
