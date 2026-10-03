@@ -1,9 +1,11 @@
+
 <!doctype html>
 <html lang="fr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>YGGDRASIL v0.4</title>
+<title>YGGDRASIL v0.5</title>
+
 <style>
 :root{
   --bg:#050505;--panel:#101010;--text:#f5f5f5;--muted:#909090;
@@ -53,6 +55,7 @@ h2{font-size:13px;color:var(--muted);margin:0 0 12px}
 .empty{grid-column:1/-1;color:var(--muted);font-size:13px;padding:20px 5px}
 </style>
 </head>
+
 <body>
 
 <section id="splash" class="screen splash">
@@ -113,10 +116,12 @@ function render(filter=''){
   const list=modules.filter(m=>
     !v || m[1].toLowerCase().includes(v) || m[2].toLowerCase().includes(v)
   );
+
   if(!list.length){
     $('grid').innerHTML='<div class="empty">Aucun module trouvé.</div>';
     return;
   }
+
   list.forEach(m=>{
     const i=modules.indexOf(m);
     const b=document.createElement('button');
@@ -147,9 +152,21 @@ function openPanel(icon,title,desc,html){
   $('panel').classList.add('show');
 }
 
-function closePanel(){$('panel').classList.remove('show')}
-function goHome(){closePanel();window.scrollTo(0,0)}
-function focusSearch(){closePanel();$('q').focus();window.scrollTo(0,0)}
+function closePanel(){
+  stopListening();
+  $('panel').classList.remove('show');
+}
+
+function goHome(){
+  closePanel();
+  window.scrollTo(0,0);
+}
+
+function focusSearch(){
+  closePanel();
+  $('q').focus();
+  window.scrollTo(0,0);
+}
 
 function search(e){
   e.preventDefault();
@@ -159,6 +176,8 @@ function search(e){
 $('q').addEventListener('input',()=>render($('q').value));
 
 function settings(){
+  stopListening();
+
   const html=`
   <div class="row">🧩 <b>Modules</b><br>
     <span class="small">Ajouter des modules personnels.</span>
@@ -189,8 +208,9 @@ function settings(){
   </div>
 
   <div class="row">📦 <b>YGGDRASIL</b><br>
-    <span class="small">Version 0.4 · système vocal intégré.</span>
+    <span class="small">Version 0.5 · système vocal intégré.</span>
   </div>`;
+
   openPanel('⚙️','PARAMÈTRES','Configuration générale de YGGDRASIL',html);
 }
 
@@ -201,6 +221,8 @@ function setVoiceMode(mode){
 }
 
 function openAssistant(){
+  stopListening();
+
   const html=`
   <div class="voice-box">
     <div class="small">ASSISTANT YGGDRASIL</div>
@@ -210,25 +232,20 @@ function openAssistant(){
     <button class="action" onclick="testVoice()">🔊 Tester la voix</button>
     <button class="action" onclick="clearVoiceText()">Effacer</button>
   </div>`;
+
   openPanel('🎙️','ASSISTANT','Assistant vocal + tactile',html);
 }
 
 function testVoice(){
   const status=$('voiceStatus');
+
   if(window.AndroidVoice && AndroidVoice.isAvailable()){
     AndroidVoice.speak('YGGDRASIL est prêt.');
     if(status) status.textContent='Lecture vocale en cours…';
     return;
   }
-  if(!('speechSynthesis' in window)){
-    if(status) status.textContent='Synthèse vocale non disponible.';
-    return;
-  }
-  const u=new SpeechSynthesisUtterance('YGGDRASIL est prêt.');
-  u.lang='fr-FR';
-  speechSynthesis.cancel();
-  speechSynthesis.speak(u);
-  if(status) status.textContent='Lecture vocale en cours…';
+
+  if(status) status.textContent='Synthèse vocale Android indisponible.';
 }
 
 function speak(text){
@@ -236,147 +253,129 @@ function speak(text){
     AndroidVoice.speak(text);
     return;
   }
-  if('speechSynthesis' in window){
-    speechSynthesis.cancel();
-    const u=new SpeechSynthesisUtterance(text);
-    u.lang='fr-FR';
-    u.rate=1;
-    u.pitch=1;
-    speechSynthesis.speak(u);
-    return;
-  }
-  const status=document.getElementById('voiceStatus');
-  if(status){
-    status.textContent='Système vocal indisponible.';
-  }
+
+  const status=$('voiceStatus');
+  if(status) status.textContent='Système vocal indisponible.';
 }
 
+let isListening=false;
 
-let recognition = null;
-let isListening = false;
-
-function toggleListening() {
-  if (isListening) {
+function toggleListening(){
+  if(isListening){
     stopListening();
     return;
   }
 
-  if (!window.AndroidVoice) {
-    const status = $('voiceStatus');
-    if (status) status.textContent = 'Système vocal Android indisponible.';
+  if(!window.AndroidVoice){
+    const status=$('voiceStatus');
+    if(status) status.textContent='Système vocal Android indisponible.';
     return;
   }
 
-  isListening = true;
+  isListening=true;
 
-  const button = $('micButton');
-  const status = $('voiceStatus');
-  const text = $('voiceText');
+  const button=$('micButton');
+  const status=$('voiceStatus');
+  const text=$('voiceText');
 
-  if (button) {
+  if(button){
     button.classList.add('listening');
-    button.textContent = '⏹️';
+    button.textContent='⏹️';
   }
 
-  if (status) status.textContent = '🎙️ YGGDRASIL vous écoute…';
-  if (text) text.textContent = 'Parlez maintenant…';
+  if(status) status.textContent='🎙️ YGGDRASIL vous écoute…';
+  if(text) text.textContent='Parlez maintenant…';
 
   AndroidVoice.startListening();
 }
 
-function stopListening() {
-  if (window.AndroidVoice) {
+function stopListening(){
+  if(window.AndroidVoice){
     AndroidVoice.stopListening();
   }
 
-  isListening = false;
+  isListening=false;
 
-  const button = $('micButton');
-
-  if (button) {
+  const button=$('micButton');
+  if(button){
     button.classList.remove('listening');
-    button.textContent = '🎙️';
+    button.textContent='🎙️';
   }
 }
 
-window.yggVoiceResult = function(transcript) {
-  isListening = false;
+window.yggVoiceResult=function(transcript){
+  isListening=false;
 
-  const text = $('voiceText');
-  const status = $('voiceStatus');
-  const button = $('micButton');
+  const text=$('voiceText');
+  const status=$('voiceStatus');
+  const button=$('micButton');
 
-  if (text) text.textContent = transcript;
-  if (status) status.textContent = 'Commande reçue.';
+  if(text) text.textContent=transcript;
+  if(status) status.textContent='Commande reçue.';
 
-  if (button) {
+  if(button){
     button.classList.remove('listening');
-    button.textContent = '🎙️';
+    button.textContent='🎙️';
   }
 
   handleVoiceCommand(transcript);
 };
 
-window.yggVoiceEnded = function() {
-  isListening = false;
+window.yggVoiceEnded=function(){
+  isListening=false;
 
-  const button = $('micButton');
+  const button=$('micButton');
 
-  if (button) {
+  if(button){
     button.classList.remove('listening');
-    button.textContent = '🎙️';
+    button.textContent='🎙️';
   }
 };
 
-
-function toggleListening(){
-  if(isListening){stopListening();return;}
-  if(!recognition) recognition=createRecognition();
-  if(!recognition){
-    const status=$('voiceStatus');
-    if(status) status.textContent='La reconnaissance vocale n’est pas disponible sur cet appareil.';
-    return;
-  }
-  try{recognition.start();}
-  catch(e){const status=$('voiceStatus');if(status) status.textContent='Le système vocal est déjà actif.';}
-}
-
-function stopListening(){
-  if(recognition){try{recognition.stop();}catch(e){}}
-  isListening=false;
-  const button=$('micButton');
-  if(button){button.classList.remove('listening');button.textContent='🎙️';}
-}
-
 function clearVoiceText(){
-  const text=$('voiceText'),status=$('voiceStatus');
+  const text=$('voiceText');
+  const status=$('voiceStatus');
+
   if(text) text.textContent='Appuie sur le microphone et parle.';
   if(status) status.textContent='Système vocal : prêt';
 }
 
 function handleVoiceCommand(command){
   if(!command) return;
+
   const normalized=command.toLowerCase().trim();
+
   if(normalized.includes('bonjour')){
     const response='Bonjour. YGGDRASIL est à votre écoute.';
-    const text=$('voiceText'),status=$('voiceStatus');
+    const text=$('voiceText');
+    const status=$('voiceStatus');
+
     if(text) text.textContent=response;
     if(status) status.textContent='Réponse vocale prête.';
+
     speak(response);
     return;
   }
-  if(normalized.includes('ouvre les réglages')||normalized.includes('ouvre les paramètres')){
+
+  if(normalized.includes('ouvre les réglages')||
+     normalized.includes('ouvre les paramètres')||
+     normalized.includes('ouvre les parametres')){
     settings();
     speak('Ouverture des paramètres.');
     return;
   }
-  if(normalized.includes('retour')||normalized.includes('accueil')){
+
+  if(normalized.includes('retour')||
+     normalized.includes('accueil')||
+     normalized.includes('reviens à l’accueil')){
     goHome();
     speak('Retour à l’accueil.');
     return;
   }
+
   const status=$('voiceStatus');
   if(status) status.textContent='Commande enregistrée : '+command;
+
   speak('Commande reçue.');
 }
 
@@ -390,6 +389,7 @@ function setTheme(t){
 function addModule(){
   const name=prompt('Nom du nouveau module :');
   if(!name)return;
+
   modules.push(['◈',name,'Module personnel']);
   localStorage.setItem('ygg_modules',JSON.stringify(modules));
   render($('q').value);
@@ -405,5 +405,7 @@ setTimeout(()=>{
   render();
 },1800);
 </script>
+
 </body>
-</html>
+    </html>
+  
