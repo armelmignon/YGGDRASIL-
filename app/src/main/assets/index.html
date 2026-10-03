@@ -1,4 +1,95 @@
 
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>YGGDRASIL v0.6</title>
+
+<style>
+:root{
+  --bg:#050505;--panel:#101010;--text:#f5f5f5;--muted:#909090;
+  --line:#252525;--accent:#fff;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,sans-serif}
+body.light{--bg:#f4f4f4;--panel:#fff;--text:#111;--muted:#666;--line:#d7d7d7;--accent:#111}
+button,input{font:inherit}
+button{cursor:pointer}
+.screen{min-height:100vh;background:var(--bg)}
+.splash{display:flex;align-items:center;justify-content:center;flex-direction:column}
+.logo{font-family:Georgia,serif;letter-spacing:.24em;font-size:27px;color:var(--text)}
+.fade{animation:fade 1.7s ease both}
+@keyframes fade{0%{opacity:0}25%,75%{opacity:1}100%{opacity:0}}
+.home{display:none;max-width:520px;margin:auto;padding:18px 16px 95px}
+header{padding:14px 4px 18px}
+.brand{font-family:Georgia,serif;letter-spacing:.2em;font-size:24px}
+.sub{font-size:12px;color:var(--muted);margin-top:5px}
+.search{display:flex;align-items:center;border:1px solid var(--line);background:var(--panel);border-radius:16px;margin:4px 0 25px;padding:0 14px}
+.search span{color:var(--muted);font-size:21px}
+.search input{width:100%;padding:15px 9px;background:none;border:0;outline:0;color:var(--text)}
+h2{font-size:13px;color:var(--muted);margin:0 0 12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:17px 15px;min-height:110px;color:var(--text);text-align:left}
+.icon{font-size:25px;margin-bottom:10px}
+.title{font-weight:650}
+.desc{font-size:11px;color:var(--muted);margin-top:5px}
+.nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(520px,100%);display:flex;justify-content:space-around;background:var(--panel);border-top:1px solid var(--line);padding:9px 4px 11px;z-index:5}
+.nav button{border:0;background:none;color:var(--muted);font-size:10px}
+.nav button:first-child{color:var(--text)}
+.nav i{font-style:normal;display:block;font-size:19px;margin-bottom:2px}
+.panel{display:none;position:fixed;inset:0;background:var(--bg);z-index:10;padding:20px 18px;overflow:auto}
+.panel.show{display:block}
+.back{background:none;border:0;color:var(--text);font-size:27px}
+.panel h1{font-family:Georgia,serif;letter-spacing:.1em}
+.row{border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:15px;margin:9px 0;overflow:hidden}
+.row button{float:right;background:var(--accent);color:var(--bg);border:0;border-radius:10px;padding:5px 10px}
+.small{color:var(--muted);font-size:12px}
+.action{display:inline-block;float:none;margin:10px 8px 0 0;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--accent);color:var(--bg)}
+.voice-status{margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:12px;color:var(--muted)}
+.voice-box{margin-top:12px;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--panel)}
+.voice-text{font-size:14px;min-height:24px}
+.mic{display:block;width:72px;height:72px;margin:14px auto 8px;border-radius:50%;border:1px solid var(--line);background:var(--accent);color:var(--bg);font-size:30px}
+.mic.listening{animation:pulse 1s infinite}
+@keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.08)}100%{transform:scale(1)}}
+.empty{grid-column:1/-1;color:var(--muted);font-size:13px;padding:20px 5px}
+</style>
+</head>
+
+<body>
+
+<section id="splash" class="screen splash">
+  <div class="logo fade">YGGDRASIL</div>
+</section>
+
+<main id="home" class="home">
+<header>
+  <div class="brand">YGGDRASIL</div>
+  <div class="sub">Votre espace personnel</div>
+</header>
+
+<form class="search" onsubmit="search(event)">
+  <span>⌕</span>
+  <input id="q" placeholder="Recherche" autocomplete="off">
+</form>
+
+<h2>MODULES</h2>
+<div id="grid" class="grid"></div>
+</main>
+
+<nav id="nav" class="nav" style="display:none">
+  <button onclick="goHome()"><i>⌂</i>Accueil</button>
+  <button onclick="focusSearch()"><i>⌕</i>Recherche</button>
+  <button onclick="settings()"><i>⚙</i>Réglages</button>
+</nav>
+
+<section id="panel" class="panel">
+  <button class="back" onclick="closePanel()">‹</button>
+  <h1 id="ptitle"></h1>
+  <p id="pdesc" class="small"></p>
+  <div id="content"></div>
+</section>
+
 <script>
 const defaults=[
  ['🧠','Notes','Connaissances, idées, textes'],
@@ -36,6 +127,7 @@ function normalize(text){
     .replace(/[\u0300-\u036f]/g,'')
     .replace(/[’']/g,' ')
     .replace(/[.,!?;:]/g,' ')
+    .replace(/[-]/g,' ')
     .replace(/\s+/g,' ')
     .trim();
 }
@@ -131,7 +223,7 @@ function settings(){
   stopListening();
 
   const memoryHTML=memories.length
-    ? memories.map((m,i)=>
+    ? memories.map(m=>
       `<div class="row">
         <span>${escapeHtml(m.text)}</span>
         <div class="small">${escapeHtml(m.date)}</div>
@@ -141,8 +233,8 @@ function settings(){
 
   const html=`
   <div class="row">🧩 <b>Modules</b><br>
-    <span class="small">Ajouter des modules personnels.</span><br>
-    <button class="action" onclick="addModule()">＋ Ajouter</button>
+    <span class="small">Ajouter des modules personnels.</span>
+    <br><button class="action" onclick="addModule()">＋ Ajouter</button>
   </div>
 
   <div class="row">🎙️ <b>Assistant vocal</b><br>
@@ -161,14 +253,13 @@ function settings(){
   </div>
 
   <div class="row">🧠 <b>Mémoire locale</b><br>
-    <span class="small">
-      ${memories.length} information(s) enregistrée(s) sur ce téléphone.
-    </span>
+    <span class="small">${memories.length} information(s) enregistrée(s) sur ce téléphone.</span>
     ${memoryHTML}
+    <button class="action" onclick="clearMemories()">Vider la mémoire</button>
   </div>
 
   <div class="row">🔐 <b>Sécurité</b><br>
-    <span class="small">Espace réservé aux fonctions de sécurité.</span>
+    <span class="small">Espace réservé aux fonctions de sécurité de YGGDRASIL.</span>
   </div>
 
   <div class="row">☁️ <b>Données & Vault</b><br>
@@ -176,7 +267,7 @@ function settings(){
   </div>
 
   <div class="row">📦 <b>YGGDRASIL</b><br>
-    <span class="small">Version 0.6 · cerveau local en préparation.</span>
+    <span class="small">Version 0.6 · cerveau local.</span>
   </div>`;
 
   openPanel('⚙️','PARAMÈTRES','Configuration générale de YGGDRASIL',html);
@@ -195,12 +286,8 @@ function openAssistant(){
   <div class="voice-box">
     <div class="small">ASSISTANT YGGDRASIL</div>
     <button id="micButton" class="mic" onclick="toggleListening()">🎙️</button>
-    <div id="voiceText" class="voice-text">
-      Appuie sur le microphone et parle.
-    </div>
-    <div id="voiceStatus" class="voice-status">
-      Cerveau local : prêt
-    </div>
+    <div id="voiceText" class="voice-text">Appuie sur le microphone et parle.</div>
+    <div id="voiceStatus" class="voice-status">Cerveau local : prêt</div>
     <button class="action" onclick="testVoice()">🔊 Tester la voix</button>
     <button class="action" onclick="clearVoiceText()">Effacer</button>
   </div>`;
@@ -348,9 +435,9 @@ function findMemory(question){
   }
 
   const words=q.split(' ').filter(w=>w.length>3);
-  let matches=memories.filter(m=>{
+  const matches=memories.filter(m=>{
     const saved=normalize(m.text);
-    return words.some(w=>saved.includes(w));
+    return words.length===0 || words.some(w=>saved.includes(w));
   });
 
   if(matches.length){
@@ -358,6 +445,13 @@ function findMemory(question){
   }else{
     answer('Je ne trouve pas cette information dans ma mémoire locale.');
   }
+}
+
+function clearMemories(){
+  if(!confirm('Effacer toutes les informations de la mémoire locale ?'))return;
+  memories=[];
+  saveMemories();
+  settings();
 }
 
 function openModuleByName(name){
@@ -391,9 +485,9 @@ function handleVoiceCommand(command){
     return;
   }
 
-  // Enregistrer une information dans la mémoire
+  // Enregistrer une information
   const rememberMatch=original.match(
-    /^(?:retiens que|souviens toi que|memorise que|n oublie pas que|enregistre que)\s+(.+)$/i
+    /^(?:retiens que|souviens toi que|memorise que|mémorise que|n oublie pas que|n'oublie pas que|enregistre que)\s+(.+)$/i
   );
 
   if(rememberMatch){
@@ -420,7 +514,7 @@ function handleVoiceCommand(command){
     return;
   }
 
-  // Heure et date
+  // Heure
   if(c.includes('quelle heure')||c.includes('donne moi l heure')){
     answer('Il est '+new Date().toLocaleTimeString('fr-FR',{
       hour:'2-digit',minute:'2-digit'
@@ -428,6 +522,7 @@ function handleVoiceCommand(command){
     return;
   }
 
+  // Date
   if(c.includes('quelle date')||c.includes('quel jour')||c.includes('on est quel jour')){
     answer('Nous sommes le '+new Date().toLocaleDateString('fr-FR',{
       weekday:'long',day:'numeric',month:'long',year:'numeric'
@@ -460,11 +555,10 @@ function handleVoiceCommand(command){
   }
 
   // Ouverture d'un module
-  if(c.startsWith('ouvre ')||c.startsWith('ouvre le ')||c.startsWith('ouvre la ')){
-    let name=c
-      .replace(/^ouvre le /,'')
-      .replace(/^ouvre la /,'')
-      .replace(/^ouvre /,'');
+  if(c.startsWith('ouvre ')){
+    const name=c.replace(/^ouvre\s+/,'')
+      .replace(/^(les|le|la|l)\s+/,'')
+      .trim();
 
     openModuleByName(name);
     return;
@@ -521,5 +615,8 @@ setTimeout(()=>{
   $('nav').style.display='flex';
   render();
 },1800);
-  </script>
-  
+</script>
+
+</body>
+ </html>
+                              
