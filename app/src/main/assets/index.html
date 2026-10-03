@@ -417,6 +417,8 @@ function remember(information){
     return;
   }
 
+  memories=loadJSON('ygg_memories',[]);
+
   memories.push({
     text:value,
     date:new Date().toLocaleString('fr-FR')
@@ -426,22 +428,63 @@ function remember(information){
   answer('C’est enregistré dans ma mémoire locale.');
 }
 
+// FONCTION CORRIGÉE : recherche dans la mémoire
 function findMemory(question){
-  const q=normalize(question);
+  // Relire les informations réellement enregistrées
+  memories=loadJSON('ygg_memories',[]);
 
-  if(!memories.length){
+  if(!Array.isArray(memories) || memories.length===0){
     answer('Ma mémoire locale est encore vide.');
     return;
   }
 
-  const words=q.split(' ').filter(w=>w.length>3);
+  const q=normalize(question);
+
+  // Recherche spécifique concernant le projet
+  if(q.includes('projet')){
+    const projectMemory=memories.find(m=>
+      normalize(m.text).includes('projet')
+    );
+
+    if(projectMemory){
+      const saved=String(projectMemory.text);
+
+      const match=saved.match(
+        /projet\s+s['’]appelle\s+(.+)/i
+      );
+
+      if(match){
+        answer('Ton projet s’appelle '+match[1].trim()+'.');
+        return;
+      }
+
+      answer('Voici ce que je sais sur ton projet : '+saved);
+      return;
+    }
+  }
+
+  // Recherche générale
+  const ignored=[
+    'que','sais','sur','mon','ma','mes',
+    'dans','memoire','rappelle','moi','ce',
+    'est','quoi','tu','as','retenu','information'
+  ];
+
+  const words=q.split(' ')
+    .filter(w=>w.length>2 && !ignored.includes(w));
+
   const matches=memories.filter(m=>{
     const saved=normalize(m.text);
-    return words.length===0 || words.some(w=>saved.includes(w));
+
+    return words.length===0 ||
+      words.some(w=>saved.includes(w));
   });
 
   if(matches.length){
-    answer('Voici ce que j’ai mémorisé : '+matches.map(m=>m.text).join('. '));
+    answer(
+      'Voici ce que j’ai mémorisé : '+
+      matches.map(m=>m.text).join('. ')
+    );
   }else{
     answer('Je ne trouve pas cette information dans ma mémoire locale.');
   }
@@ -495,22 +538,17 @@ function handleVoiceCommand(command){
     return;
   }
 
-  // Consulter la mémoire
+  // CONSULTER LA MÉMOIRE : bloc corrigé
   if(
-    c.includes('que sais tu sur')||
-    c.includes('qu est ce que tu sais sur')||
+    c.includes('que sais tu')||
+    c.includes('qu est ce que tu sais')||
     c.includes('qu as tu retenu')||
     c.includes('rappelle moi ce que')||
-    c.includes('cherche dans ta memoire')
+    c.includes('cherche dans ta memoire')||
+    c.includes('mon projet')||
+    c.includes('parle moi de mon projet')
   ){
-    const question=c
-      .replace('que sais tu sur','')
-      .replace('qu est ce que tu sais sur','')
-      .replace('qu as tu retenu','')
-      .replace('rappelle moi ce que','')
-      .replace('cherche dans ta memoire','');
-
-    findMemory(question);
+    findMemory(c);
     return;
   }
 
@@ -576,6 +614,7 @@ function handleVoiceCommand(command){
 
   // État de la mémoire
   if(c.includes('combien')&&c.includes('memoire')){
+    memories=loadJSON('ygg_memories',[]);
     answer('Ma mémoire contient '+memories.length+' information(s).');
     return;
   }
@@ -618,5 +657,5 @@ setTimeout(()=>{
 </script>
 
 </body>
- </html>
-                              
+  </html>
+  
