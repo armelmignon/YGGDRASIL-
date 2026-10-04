@@ -466,7 +466,52 @@ function remember(information){
     text:value,
     date:new Date().toLocaleString('fr-FR')
   });
+// MÉMOIRE AUTOMATIQUE DES INFORMATIONS IMPORTANTES
+function autoRememberImportantInformation(text){
+  const value=String(text||'').trim();
+  const c=normalize(value);
 
+  if(!value || value.length<8 || value.length>240) return false;
+
+  // Ne pas mémoriser les questions ou les demandes
+  if(/[?؟]/.test(value)) return false;
+
+  const patterns=[
+    /mon projet s'appelle/,
+    /mon projet est/,
+    /je m'appelle/,
+    /mon nom est/,
+    /je prefere/,
+    /j'aime/,
+    /je n'aime pas/,
+    /mon objectif est/,
+    /je travaille sur/,
+    /je developpe/,
+    /mon application s'appelle/,
+    /mon telephone est/
+  ];
+
+  if(!patterns.some(pattern=>pattern.test(c))) return false;
+
+  // Ne jamais enregistrer les mots de passe ou les secrets
+  if(/mot de passe|password|code secret|cle privee/.test(c)) return false;
+
+  refreshMemories();
+
+  const alreadySaved=memories.some(item=>
+    normalize(item.text)===c
+  );
+
+  if(alreadySaved) return false;
+
+  memories.push({
+    text:value,
+    date:new Date().toLocaleString('fr-FR')
+  });
+
+  saveMemories();
+  return true;
+}
   saveMemories();
   answer('C’est enregistré dans ma mémoire locale.');
 }
