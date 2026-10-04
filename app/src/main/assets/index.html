@@ -466,21 +466,6 @@ function remember(information){
     text:value,
     date:new Date().toLocaleString('fr-FR')
   });
-// MÉMOIRE AUTOMATIQUE DES INFORMATIONS IMPORTANTES
-function remember(information){
-  const value=String(information||'').trim();
-
-  if(!value){
-    answer('Je n’ai pas entendu quelle information mémoriser.');
-    return;
-  }
-
-  refreshMemories();
-
-  memories.push({
-    text:value,
-    date:new Date().toLocaleString('fr-FR')
-  });
 
   saveMemories();
   answer('C’est enregistré dans ma mémoire locale.');
@@ -530,8 +515,7 @@ function autoRememberImportantInformation(text){
 
   saveMemories();
   return true;
-}
-
+  }
 // Mots courants ignorés lors de la recherche
 const ignoredWords=[
   'que','quoi','qui','est','sais','sait','sur','dans',
