@@ -701,10 +701,87 @@ function handleVoiceCommand(command){
     return;
   }
 
-  // HEURE
+    // HEURE
   if(c.includes('quelle heure')||c.includes('donne moi l heure')){
     answer('Il est '+new Date().toLocaleTimeString('fr-FR',{
-      hour:
+      hour:'2-digit',
+      minute:'2-digit'
+    }));
+    return;
+  }
+
+  // DATE
+  if(c.includes('quelle date')||c.includes('quel jour sommes nous')){
+    answer('Nous sommes le '+new Date().toLocaleDateString('fr-FR',{
+      weekday:'long',
+      day:'numeric',
+      month:'long',
+      year:'numeric'
+    }));
+    return;
+  }
+
+  // RÉGLAGES
+  if(c.includes('ouvre les reglages')||c.includes('ouvre les parametres')){
+    settings();
+    answer('Voici les réglages.');
+    return;
+  }
+
+  // ACCUEIL
+  if(c.includes('retour accueil')||c.includes('ouvre accueil')){
+    goHome();
+    answer('Retour à l’accueil.');
+    return;
+  }
+
+  // OUVERTURE DES MODULES
+  if(c.includes('ouvre les notes')||c.includes('ouvre notes')){
+    openModuleByName('Notes');
+    return;
+  }
+
+  if(c.includes('ouvre argent')){
+    openModuleByName('Argent');
+    return;
+  }
+
+  if(c.includes('ouvre organisation')){
+    openModuleByName('Organisation');
+    return;
+  }
+
+  if(c.includes('ouvre medias')){
+    openModuleByName('Médias');
+    return;
+  }
+
+  if(c.includes('ouvre outils')){
+    openModuleByName('Outils');
+    return;
+  }
+
+  if(c.includes('ouvre assistant')){
+    openAssistant();
+    return;
+  }
+
+  answer('Je t’écoute. Je ne connais pas encore la réponse à cette demande.');
+}
+
+// =====================================
+// 7. DÉMARRAGE DE YGGDRASIL
+// =====================================
+
+applyTheme();
+render();
+
+setTimeout(()=>{
+  $('splash').style.display='none';
+  $('home').style.display='block';
+  $('nav').style.display='flex';
+},2200);
+
 </script>
 
 </body>
