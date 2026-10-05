@@ -2,6 +2,7 @@
 package com.yggdrasil.app;
 
 import android.Manifest;
+import android.os.Handler;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -19,9 +20,15 @@ import android.webkit.WebChromeClient;
 import android.webkit.PermissionRequest;
 
 import java.util.ArrayList;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.Locale;
 
 public class MainActivity extends Activity {
+    private final Handler handler = new Handler();
 
     private static final int AUDIO_PERMISSION = 1001;
 
@@ -300,5 +307,3 @@ public class MainActivity extends Activity {
             super.onBackPressed();
         }
     }
-            }
-                
