@@ -811,8 +811,30 @@ function handleVoiceCommand(command){
     return;
   }
 
-  answer('Je t’écoute. Je ne connais pas encore la réponse à cette demande.');
-}
+  answer('Je réfléchis...');
+
+fetch('https://script.google.com/macros/s/AKfycbzMsx9e7AadOJgJR8F8b4BqSluJ6jt-dcoqaZ4zseVsJhh7AeVZGjN1rfJGv_8VUdUaDQ/exec', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    prompt: original
+  })
+})
+.then(response => response.json())
+.then(data => {
+  if(data.answer){
+    answer(data.answer);
+  } else if(data.error){
+    answer('Erreur IA : ' + data.error);
+  } else {
+    answer('Je n’ai pas reçu de réponse.');
+  }
+})
+.catch(error => {
+  answer('Impossible de contacter YGGDRASIL IA.');
+});
 
 // =====================================
 // 7. DÉMARRAGE DE YGGDRASIL
