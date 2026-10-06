@@ -357,11 +357,11 @@ protected void onDestroy() {
     super.onDestroy();  
 }  
 
-@Override  
-public void onBackPressed() {  
-    if (web.canGoBack()) {  
-        web.goBack();  
-    } else {  
-        super.onBackPressed();  
-    }  
+@Override
+public void onBackPressed() {
+    if (web.canGoBack()) {
+        web.goBack();
+    } else {
+        super.onBackPressed();
     }
+}
