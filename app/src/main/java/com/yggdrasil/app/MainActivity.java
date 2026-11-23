@@ -127,8 +127,7 @@ public void onCreate(Bundle state) {
                     results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);  
 
                 if (matches != null && !matches.isEmpty()) {  
-                    String transcript = matches.get(0);  
-                    askAI(transcript);  
+                    String transcript = matches.get(0)   
 
                     String safeText = org.json.JSONObject.quote(transcript);  
 
