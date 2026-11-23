@@ -203,8 +203,7 @@ new Thread(() -> {
         reader.close();  
         connection.disconnect();  
 
-        String answer = response.toString();
-        answer = new org.json.JSONObject(answer).getString("answer");
+        final String answer = new org.json.JSONObject(response.toString()).getString("answer");
 
         runOnUiThread(() -> {  
             if (tts != null && ttsReady) {  
