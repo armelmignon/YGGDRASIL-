@@ -10,13 +10,14 @@ import android.os.Build;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 
-importer android.speech.tts.TextToSpeech;
-importer android.webkit.JavascriptInterface;
-importer android.webkit.WebSettings;
-importer android.webkit.WebView;
-importer android.webkit.WebViewClient;
-importer android.webkit.WebChromeClient;
-importer android.webkit.PermissionRequest;
+import android.speech.tts.TextToSpeech;
+import android.speech.SpeechRecognizer;
+import android.webkit.JavascriptInterface;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import android.webkit.WebChromeClient;
+import android.webkit.PermissionRequest;
 
 import java.util.ArrayList;
 import java.io.BufferedReader;
@@ -31,9 +32,9 @@ private  final  Handler  handler = new  Handler ( ) ;
 
 private  static  final  int  AUDIO_PERMISSION = 1001 ;  
 
- WebView  privé web ;  
-privé  TextToSpeech  tts ;  
- Reconnaissance vocale  privée ;  
+ private WebView web;
+private TextToSpeech tts;
+private SpeechRecognizer recognizer; 
 
 private boolean ttsReady = false;  
 private boolean listening = false;  
