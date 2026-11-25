@@ -2,8 +2,17 @@ name: Construire YGGDRASIL APK
 
 on:
   workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branche à compiler'
+        required: true
+        type: choice
+        options:
+          - sauvegarde-yggdrasil
+          - main
+        default: sauvegarde-yggdrasil
   push:
-    branches: [ main ]
+    branches: [ main, sauvegarde-yggdrasil ]
 
 jobs:
   build:
@@ -12,6 +21,8 @@ jobs:
     steps:
       - name: Récupérer le projet
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch || github.ref }}
 
       - name: Java 17
         uses: actions/setup-java@v4
