@@ -30,339 +30,347 @@ import java.util.Locale;
 public  class  MainActivity  extends  Activity  {
 private  final  Handler  handler = new  Handler ( ) ;
 
-private  static  final  int  AUDIO_PERMISSION = 1001 ;  
+private  static  final  int  AUDIO_PERMISSION = 1001 ;
 
- private WebView web;
+private WebView web;
 private TextToSpeech tts;
-private SpeechRecognizer recognizer; 
+private SpeechRecognizer recognizer;
 
-private boolean ttsReady = false;  
-private boolean listening = false;  
-private boolean pendingListening = false;  
-private static final String API_URL = "https://script.google.com/macros/s/AKfycbzMsx9e7AadOJgJR8F8b4BqSluJ6jt-dcoqaZ4zseVsJhh7AeVZGjN1rfJGv_8VUdUaDQ/exec";  
-  
-@Override  
-public void onCreate(Bundle state) {  
-    super.onCreate(state);  
+private boolean ttsReady = false;
+private boolean listening = false;
+private boolean pendingListening = false;
+private static final String API_URL = "https://script.google.com/macros/s/AKfycbzMsx9e7AadOJgJR8F8b4BqSluJ6jt-dcoqaZ4zseVsJhh7AeVZGjN1rfJGv_8VUdUaDQ/exec";
 
-    web = new WebView(this);  
+@Override
+public void onCreate(Bundle state) {
+super.onCreate(state);
 
-    WebSettings s = web.getSettings();  
-    s.setJavaScriptEnabled(true);  
-    s.setDomStorageEnabled(true);  
-    s.setDatabaseEnabled(true);  
-    s.setAllowFileAccess(true);  
-    s.setMediaPlaybackRequiresUserGesture(false);  
+web = new WebView(this);    
 
-    web.setWebViewClient(new WebViewClient());  
+WebSettings s = web.getSettings();    
+s.setJavaScriptEnabled(true);    
+s.setDomStorageEnabled(true);    
+s.setDatabaseEnabled(true);    
+s.setAllowFileAccess(true);    
+s.setMediaPlaybackRequiresUserGesture(false);    
 
-    web.setWebChromeClient(new WebChromeClient() {  
-        @Override  
-        public void onPermissionRequest(final PermissionRequest r) {  
-            runOnUiThread(() -> r.grant(r.getResources()));  
-        }  
-    });  
+web.setWebViewClient(new WebViewClient());    
 
-    web.addJavascriptInterface(new AndroidVoice(), "AndroidVoice");  
+web.setWebChromeClient(new WebChromeClient() {    
+    @Override    
+    public void onPermissionRequest(final PermissionRequest r) {    
+        runOnUiThread(() -> r.grant(r.getResources()));    
+    }    
+});    
 
-    tts = new TextToSpeech(this, status -> {  
-        if (status == TextToSpeech.SUCCESS) {  
-            int result = tts.setLanguage(Locale.FRENCH);  
+web.addJavascriptInterface(new AndroidVoice(), "AndroidVoice");    
 
-            if (result != TextToSpeech.LANG_MISSING_DATA &&  
-                result != TextToSpeech.LANG_NOT_SUPPORTED) {  
-                ttsReady = true;  
-            }  
-        }  
-    });  
+tts = new TextToSpeech(this, status -> {    
+    if (status == TextToSpeech.SUCCESS) {    
+        int result = tts.setLanguage(Locale.FRENCH);    
 
-    if (SpeechRecognizer.isRecognitionAvailable(this)) {  
-        recognizer = SpeechRecognizer.createSpeechRecognizer(this);  
-        recognizer.setRecognitionListener(new RecognitionListener() {  
+        if (result != TextToSpeech.LANG_MISSING_DATA &&    
+            result != TextToSpeech.LANG_NOT_SUPPORTED) {    
+            ttsReady = true;    
+        }    
+    }    
+});    
 
-            @Override  
-            public void onReadyForSpeech(Bundle params) {  
-                listening = true;  
-                sendStatus("🎙️ YGGDRASIL vous écoute…");  
-            }  
+if (SpeechRecognizer.isRecognitionAvailable(this)) {    
+    recognizer = SpeechRecognizer.createSpeechRecognizer(this);    
+    recognizer.setRecognitionListener(new RecognitionListener() {    
 
-            @Override  
-            public void onBeginningOfSpeech() {}  
+        @Override    
+        public void onReadyForSpeech(Bundle params) {    
+            listening = true;    
+            sendStatus("🎙️ YGGDRASIL vous écoute…");    
+        }    
 
-            @Override  
-            public void onRmsChanged(float rmsdB) {}  
+        @Override    
+        public void onBeginningOfSpeech() {}    
 
-            @Override  
-            public void onBufferReceived(byte[] buffer) {}  
+        @Override    
+        public void onRmsChanged(float rmsdB) {}    
 
-            @Override  
-            public void onEndOfSpeech() {  
-                listening = false;  
-            }  
+        @Override    
+        public void onBufferReceived(byte[] buffer) {}    
 
-            @Override  
-            public void onError(int error) {  
-                listening = false;  
+        @Override    
+        public void onEndOfSpeech() {    
+            listening = false;    
+        }    
 
-                String message = "Erreur de reconnaissance vocale.";  
+        @Override    
+        public void onError(int error) {    
+            listening = false;    
 
-                if (error == SpeechRecognizer.ERROR_NO_MATCH ||  
-                    error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT) {  
-                    message = "Aucune parole détectée.";  
-                } else if (error == SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS) {  
-                    message = "Autorisation du microphone nécessaire.";  
-                } else if (error == SpeechRecognizer.ERROR_NETWORK ||  
-                           error == SpeechRecognizer.ERROR_NETWORK_TIMEOUT) {  
-                    message = "Problème de connexion pour la reconnaissance vocale.";  
-                }  
+            String message = "Erreur de reconnaissance vocale.";    
 
-                sendStatus(message);  
-                sendToJavaScript("window.yggVoiceEnded && window.yggVoiceEnded();");  
-            }  
+            if (error == SpeechRecognizer.ERROR_NO_MATCH ||    
+                error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT) {    
+                message = "Aucune parole détectée.";    
+            } else if (error == SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS) {    
+                message = "Autorisation du microphone nécessaire.";    
+            } else if (error == SpeechRecognizer.ERROR_NETWORK ||    
+                       error == SpeechRecognizer.ERROR_NETWORK_TIMEOUT) {    
+                message = "Problème de connexion pour la reconnaissance vocale.";    
+            }    
 
-            @Override  
-            public void onResults(Bundle results) {  
-                listening = false;  
+            sendStatus(message);    
+            sendToJavaScript("window.yggVoiceEnded && window.yggVoiceEnded();");    
+        }    
 
-                ArrayList<String> matches =  
-                    results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);  
+        @Override    
+        public void onResults(Bundle results) {    
+            listening = false;    
 
-                if (matches != null && !matches.isEmpty()) {  
-                    String transcript = matches.get(0);  
-                    askAI(transcript);  
+            ArrayList<String> matches =    
+                results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);    
 
-                    String safeText = org.json.JSONObject.quote(transcript);  
+            if (matches != null && !matches.isEmpty()) {    
+                String transcript = matches.get(0);    
+                askAI(transcript);    
 
-                    sendToJavaScript(  
-                        "window.yggVoiceResult && window.yggVoiceResult(" +  
-                        safeText + ");"  
-                    );  
-                }  
+                String safeText = org.json.JSONObject.quote(transcript);    
 
-                sendToJavaScript("window.yggVoiceEnded && window.yggVoiceEnded();");  
-            }  
+                sendToJavaScript(    
+                    "window.yggVoiceResult && window.yggVoiceResult(" +    
+                    safeText + ");"    
+                );    
+            }    
 
-            @Override  
-            public void onPartialResults(Bundle results) {}  
+            sendToJavaScript("window.yggVoiceEnded && window.yggVoiceEnded();");    
+        }    
 
-            @Override  
-            public void onEvent(int eventType, Bundle params) {}  
-        });  
-    }  
+        @Override    
+        public void onPartialResults(Bundle results) {}    
 
-    setContentView(web);  
-    web.loadUrl("file:///android_asset/index.html");  
-}  
+        @Override    
+        public void onEvent(int eventType, Bundle params) {}    
+    });    
+}    
 
-private void sendStatus(String message) {  
-    String safeMessage = org.json.JSONObject.quote(message);  
+setContentView(web);    
+web.loadUrl("file:///android_asset/index.html");
 
-    sendToJavaScript(  
-        "var s=document.getElementById('voiceStatus');" +  
-        "if(s)s.textContent=" + safeMessage + ";"  
-    );  
-}  
+}
 
-private void sendToJavaScript(String script) {  
-    runOnUiThread(() -> {  
-        if (web != null) {  
-            web.evaluateJavascript(script, null);  
-        }  
-    });  
-}  
+private void sendStatus(String message) {
+String safeMessage = org.json.JSONObject.quote(message);
 
-private void askAI(String question) {  
-new Thread(() -> {  
-    try {  
-        URL url = new URL(API_URL);  
-        HttpURLConnection connection =  
-                (HttpURLConnection) url.openConnection();  
+sendToJavaScript(    
+    "var s=document.getElementById('voiceStatus');" +    
+    "if(s)s.textContent=" + safeMessage + ";"    
+);
 
-        connection.setRequestMethod("POST");  
-        connection.setDoOutput(true);  
-        connection.setRequestProperty("Content-Type", "application/json");  
+}
 
-        String json =  
-                "{\"message\":" +  
-                org.json.JSONObject.quote(question) +  
-                "}";  
+private void sendToJavaScript(String script) {
+runOnUiThread(() -> {
+if (web != null) {
+web.evaluateJavascript(script, null);
+}
+});
+}
 
-        try (OutputStream os = connection.getOutputStream()) {  
-            os.write(json.getBytes("UTF-8"));  
-        }  
+private void askAI(String question) {
+new Thread(() -> {
+try {
+URL url = new URL(API_URL);
+HttpURLConnection connection =
+(HttpURLConnection) url.openConnection();
 
-        BufferedReader reader = new BufferedReader(  
-                new InputStreamReader(connection.getInputStream())  
-        );  
+connection.setRequestMethod("POST");    
+    connection.setDoOutput(true);    
+    connection.setRequestProperty("Content-Type", "application/json");    
 
-        StringBuilder response = new StringBuilder();  
-        String line;  
+    String json =    
+            "{\"message\":" +    
+            org.json.JSONObject.quote(question) +    
+            "}";    
 
-        while ((line = reader.readLine()) != null) {  
-            response.append(line);  
-        }  
+    try (OutputStream os = connection.getOutputStream()) {    
+        os.write(json.getBytes("UTF-8"));    
+    }    
 
-        reader.close();  
-        connection.disconnect();  
+    BufferedReader reader = new BufferedReader(    
+            new InputStreamReader(connection.getInputStream())    
+    );    
 
-        final String answer = new org.json.JSONObject(response.toString()).getString("answer");
+    StringBuilder response = new StringBuilder();    
+    String line;    
 
-        runOnUiThread(() -> {  
-            if (tts != null && ttsReady) {  
-                tts.speak(  
-                        answer,  
-                        TextToSpeech.QUEUE_FLUSH,  
-                        null,  
-                        "YGGDRASIL_AI"  
-                );  
-            }  
+    while ((line = reader.readLine()) != null) {    
+        response.append(line);    
+    }    
 
-            sendStatus(answer);  
-        });  
+    reader.close();    
+    connection.disconnect();    
 
-    } catch (Exception e) {  
-        runOnUiThread(() ->  
-                sendStatus("Impossible de contacter le cerveau en ligne.")  
-        );  
-    }  
-}).start();  
-            }  
-private void startRecognition() {  
-    if (recognizer == null) {  
-        sendStatus("Reconnaissance vocale indisponible.");  
-        return;  
-    }  
+    final String answer = new org.json.JSONObject(response.toString()).getString("answer");  
 
-    if (checkSelfPermission(Manifest.permission.RECORD_AUDIO)  
-            != PackageManager.PERMISSION_GRANTED) {  
-        pendingListening = true;  
+    runOnUiThread(() -> {    
+        if (tts != null && ttsReady) {    
+            tts.speak(    
+                    answer,    
+                    TextToSpeech.QUEUE_FLUSH,    
+                    null,    
+                    "YGGDRASIL_AI"    
+            );    
+        }    
 
-        requestPermissions(  
-            new String[]{Manifest.permission.RECORD_AUDIO},  
-            AUDIO_PERMISSION  
-        );  
-        return;  
-    }  
+        sendStatus(answer);    
+    });    
 
-    Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);  
-    intent.putExtra(  
-        RecognizerIntent.EXTRA_LANGUAGE_MODEL,  
-        RecognizerIntent.LANGUAGE_MODEL_FREE_FORM  
-    );  
-    intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "fr-FR");  
-    intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "fr-FR");  
-    intent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);  
-    intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);  
+} catch (Exception e) {    
+    runOnUiThread(() ->    
+            sendStatus("Impossible de contacter le cerveau en ligne.")    
+    );    
+}
 
-    try {  
-        recognizer.startListening(intent);  
-    } catch (Exception e) {  
-        listening = false;  
-        sendStatus("Impossible de démarrer la reconnaissance vocale.");  
-    }  
-}  
+}).start();
+}
+private void startRecognition() {
+if (recognizer == null) {
+sendStatus("Reconnaissance vocale indisponible.");
+return;
+}
 
-private void stopRecognition() {  
-    listening = false;  
+if (checkSelfPermission(Manifest.permission.RECORD_AUDIO)    
+        != PackageManager.PERMISSION_GRANTED) {    
+    pendingListening = true;    
 
-    if (recognizer != null) {  
-        recognizer.cancel();  
-    }  
-}  
+    requestPermissions(    
+        new String[]{Manifest.permission.RECORD_AUDIO},    
+        AUDIO_PERMISSION    
+    );    
+    return;    
+}    
 
-public class AndroidVoice {  
+Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);    
+intent.putExtra(    
+    RecognizerIntent.EXTRA_LANGUAGE_MODEL,    
+    RecognizerIntent.LANGUAGE_MODEL_FREE_FORM    
+);    
+intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "fr-FR");    
+intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "fr-FR");    
+intent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);    
+intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);    
 
-    @JavascriptInterface  
-    public void speak(String text) {  
-        runOnUiThread(() -> {  
-            if (tts != null && ttsReady) {  
-                tts.stop();  
-                tts.speak(  
-                    text,  
-                    TextToSpeech.QUEUE_FLUSH,  
-                    null,  
-                    "YGGDRASIL_VOICE"  
-                );  
-            }  
-        });  
-    }  
+try {    
+    recognizer.startListening(intent);    
+} catch (Exception e) {    
+    listening = false;    
+    sendStatus("Impossible de démarrer la reconnaissance vocale.");    
+}
 
-    @JavascriptInterface  
-    public boolean isAvailable() {  
-        return ttsReady;  
-    }  
+}
 
-    @JavascriptInterface  
-    public void startListening() {  
-        runOnUiThread(() -> startRecognition());  
-    }  
+private void stopRecognition() {
+listening = false;
 
-    @JavascriptInterface  
-    public void stopListening() {  
-        runOnUiThread(() -> stopRecognition());  
-    }  
+if (recognizer != null) {    
+    recognizer.cancel();    
+}
 
-    @JavascriptInterface  
-    public void stop() {  
-        runOnUiThread(() -> {  
-            if (tts != null) {  
-                tts.stop();  
-            }  
-        });  
-    }  
-}  
+}
 
-@Override  
-public void onRequestPermissionsResult(  
-    int requestCode,  
-    String[] permissions,  
-    int[] grantResults  
-) {  
-    super.onRequestPermissionsResult(  
-        requestCode, permissions, grantResults  
-    );  
+public class AndroidVoice {
 
-    if (requestCode == AUDIO_PERMISSION) {  
-        if (grantResults.length > 0 &&  
-            grantResults[0] == PackageManager.PERMISSION_GRANTED) {  
+@JavascriptInterface    
+public void speak(String text) {    
+    runOnUiThread(() -> {    
+        if (tts != null && ttsReady) {    
+            tts.stop();    
+            tts.speak(    
+                text,    
+                TextToSpeech.QUEUE_FLUSH,    
+                null,    
+                "YGGDRASIL_VOICE"    
+            );    
+        }    
+    });    
+}    
 
-            if (pendingListening) {  
-                pendingListening = false;  
-                startRecognition();  
-            }  
+@JavascriptInterface    
+public boolean isAvailable() {    
+    return ttsReady;    
+}    
 
-        } else {  
-            pendingListening = false;  
-            sendStatus("Autorisation du microphone refusée.");  
-        }  
-    }  
-}  
+@JavascriptInterface    
+public void startListening() {    
+    runOnUiThread(() -> startRecognition());    
+}    
 
-@Override  
-protected void onDestroy() {  
-    if (recognizer != null) {  
-        recognizer.destroy();  
-        recognizer = null;  
-    }  
+@JavascriptInterface    
+public void stopListening() {    
+    runOnUiThread(() -> stopRecognition());    
+}    
 
-    if (tts != null) {  
-        tts.stop();  
-        tts.shutdown();  
-    }  
+@JavascriptInterface    
+public void stop() {    
+    runOnUiThread(() -> {    
+        if (tts != null) {    
+            tts.stop();    
+        }    
+    });    
+}
 
-    if (web != null) {  
-        web.destroy();  
-    }  
+}
 
-    super.onDestroy();  
-}  
+@Override
+public void onRequestPermissionsResult(
+int requestCode,
+String[] permissions,
+int[] grantResults
+) {
+super.onRequestPermissionsResult(
+requestCode, permissions, grantResults
+);
+
+if (requestCode == AUDIO_PERMISSION) {    
+    if (grantResults.length > 0 &&    
+        grantResults[0] == PackageManager.PERMISSION_GRANTED) {    
+
+        if (pendingListening) {    
+            pendingListening = false;    
+            startRecognition();    
+        }    
+
+    } else {    
+        pendingListening = false;    
+        sendStatus("Autorisation du microphone refusée.");    
+    }    
+}
+
+}
+
+@Override
+protected void onDestroy() {
+if (recognizer != null) {
+recognizer.destroy();
+recognizer = null;
+}
+
+if (tts != null) {    
+    tts.stop();    
+    tts.shutdown();    
+}    
+
+if (web != null) {    
+    web.destroy();    
+}    
+
+super.onDestroy();
+
+}
 
 @Override
 public void onBackPressed() {
-    if (web.canGoBack()) {
-        web.goBack();
-    } else {
-        super.onBackPressed();
-    }
+if (web.canGoBack()) {
+web.goBack();
+} else {
+super.onBackPressed();
+}
 }
 }
